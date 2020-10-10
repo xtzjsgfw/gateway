@@ -1,0 +1,25 @@
+log:
+  logPath: logs/
+
+database:
+  dbType: mysql
+  dbName: gateway
+  user: root
+  password: 980926
+  host: 127.0.0.1
+  port: 3306
+  debug: true
+  maxIdleConns: 10
+  maxOpenConns: 100
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  maxIdle: 30
+  maxActive: 30
+  idleTimeout: 200
+
+cluster:
+  ip: 127.0.0.1
+  port: 8880
+  sslPort: 4880
