@@ -36,6 +36,17 @@ func (g *GatewayServiceInfo) PageList(db *gorm.DB, params *dto.ServiceListInput)
 	return list, total, nil
 }
 
+func (g *GatewayServiceInfo) GroupByLoadType(db *gorm.DB) ([]dto.DashServiceStatItemOutput, error) {
+	list := []dto.DashServiceStatItemOutput{}
+
+	query := db.Table(g.TableName()).Where("is_delete = ?", 0)
+	if err = query.Select("load_type, count(*) as value").Group("load_type").Scan(&list).Error; err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
 func (g *GatewayServiceInfo) ServiceDetail(db *gorm.DB, search *GatewayServiceInfo) (*ServiceDetail, error) {
 	id := search.ID
 	httpRule := &GatewayServiceHttpRule{ServiceID: id}

@@ -15,7 +15,7 @@ type APPListInput struct {
 }
 
 type APPListOutput struct {
-	Total int                 `json:"total" form:"total"`
+	Total int64                 `json:"total" form:"total"`
 	List  []APPListItemOutput `json:"list" form:"list"`
 }
 

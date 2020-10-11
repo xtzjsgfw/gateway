@@ -20,9 +20,9 @@ func (g *GatewayApp) TableName() string {
 	return "gateway_app"
 }
 
-func (g *GatewayApp) APPList(db *gorm.DB, params *dto.APPListInput) ([]GatewayApp, int, error) {
+func (g *GatewayApp) APPList(db *gorm.DB, params *dto.APPListInput) ([]GatewayApp, int64, error) {
 	var list []GatewayApp
-	var total int
+	var total int64
 
 	pageNum := params.PageNum
 	pageSize := params.PageSize

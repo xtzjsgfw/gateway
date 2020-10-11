@@ -42,8 +42,13 @@ func Init() {
 		Group.GET("/app/stat", appController.APPStat)
 		Group.POST("/app/add", appController.APPAdd)
 		Group.POST("/app/update", appController.APPUpdate)
+
+		// Dashboard
+		dashboardController := v1.DashboardController{}
+		Group.GET("/dashboard/panel_group_data", dashboardController.PanelGroupData)
+		Group.GET("/dashboard/flow_stat", dashboardController.FlowStat)
+		Group.GET("/dashboard/service_stat", dashboardController.ServiceStat)
 	}
 
 	engine.Run()
 }
-
