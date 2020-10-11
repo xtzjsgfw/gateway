@@ -24,18 +24,16 @@ func (sc *ServiceController) ServiceList(c *gin.Context) {
 	if err := params.BindValidParam(c); err != nil {
 		return
 	}
-	fmt.Println(params)
+	db := models.GetDB()
 
 	//从db中分页读取基本信息
 	gatewayServiceInfo := &models.GatewayServiceInfo{}
-	list, total, err := gatewayServiceInfo.PageList(params)
+	list, total, err := gatewayServiceInfo.PageList(db, params)
 	if err != nil {
 		utils.ResponseFormat(c, code.ServiceInsideError, nil)
 		return
 	}
-
-	db := models.GetDB()
-
+	
 	//格式化输出信息
 	outList := []dto.ServiceListItemOutPut{}
 	for _, listItem := range list {

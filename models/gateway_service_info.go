@@ -18,11 +18,11 @@ func (g *GatewayServiceInfo) TableName() string {
 	return "gateway_service_info"
 }
 
-func (g *GatewayServiceInfo) PageList(params *dto.ServiceListInput) ([]GatewayServiceInfo, int64, error) {
+func (g *GatewayServiceInfo) PageList(db *gorm.DB, params *dto.ServiceListInput) ([]GatewayServiceInfo, int64, error) {
 	total := int64(0)
 	list := []GatewayServiceInfo{}
 	offset := (params.PageNum - 1) * params.PageSize
-	query := DB.Table(g.TableName()).Where("is_delete = ?", 0)
+	query := db.Table(g.TableName()).Where("is_delete = ?", 0)
 
 	if params.Info != "" {
 		query = query.Where("(service_name like ? or service_desc like ?)",
@@ -79,7 +79,7 @@ func (g *GatewayServiceInfo) ServiceDetail(db *gorm.DB, search *GatewayServiceIn
 
 func (g *GatewayServiceInfo) Find(db *gorm.DB, search *GatewayServiceInfo) (*GatewayServiceInfo, error) {
 	model := &GatewayServiceInfo{}
-	err := DB.Where(search).Find(&model).Error
+	err := db.Where(search).Find(&model).Error
 	if err != gorm.ErrRecordNotFound && err != nil {
 		return nil, err
 	}
