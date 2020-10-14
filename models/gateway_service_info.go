@@ -91,13 +91,12 @@ func (g *GatewayServiceInfo) ServiceDetail(db *gorm.DB, search *GatewayServiceIn
 func (g *GatewayServiceInfo) Find(db *gorm.DB, search *GatewayServiceInfo) (*GatewayServiceInfo, error) {
 	model := &GatewayServiceInfo{}
 	err := db.Where(search).Find(&model).Error
-	if err != gorm.ErrRecordNotFound && err != nil {
+	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
 	if model.ID > 0 {
 		return model, nil
 	}
-	// 什么都没找到
 	return nil, nil
 }
 

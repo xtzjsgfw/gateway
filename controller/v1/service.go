@@ -33,7 +33,7 @@ func (sc *ServiceController) ServiceList(c *gin.Context) {
 		utils.ResponseFormat(c, code.ServiceInsideError, nil)
 		return
 	}
-	
+
 	//格式化输出信息
 	outList := []dto.ServiceListItemOutPut{}
 	for _, listItem := range list {
@@ -208,7 +208,6 @@ func (sc *ServiceController) ServiceAddHTTP(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("step 1")
 	// 判断ip列表和权重列表数量是否相对应
 	if len(strings.Split(params.IpList, "\n")) != len(strings.Split(params.WeightList, "\n")) {
 		utils.ResponseFormat(c, code.WeightAndIpNumNotEqualError, nil)
@@ -217,50 +216,45 @@ func (sc *ServiceController) ServiceAddHTTP(c *gin.Context) {
 
 	db := models.GetDB()
 	// 开启事务
-	db.Begin()
+	tx := db.Begin()
 
-	fmt.Println("step 2")
 	// 查询HTTP服务是否存在
 	serviceInfo := &models.GatewayServiceInfo{
 		ServiceName: params.ServiceName,
 		IsDelete:    0,
 	}
-	serviceInfo, err = serviceInfo.Find(db, serviceInfo)
-	if serviceInfo != nil && err == nil {
-		db.Rollback()
-		utils.ResponseFormat(c, code.ServiceIsExistError, nil)
-		return
-	}
+	serviceInfo, err = serviceInfo.Find(tx, serviceInfo)
 	if err != nil {
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.ServiceInsideError, nil)
 		return
 	}
+	if serviceInfo != nil {
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceIsExistError, nil)
+		return
+	}
 
-	fmt.Println("step 3")
 	// 查询HTTPRule是否存在
 	httpUrl := &models.GatewayServiceHttpRule{RuleType: params.RuleType, Rule: params.Rule}
-	if _, err := httpUrl.Find(db, httpUrl); err == nil {
-		db.Rollback()
+	if _, err := httpUrl.Find(tx, httpUrl); err == nil {
+		tx.Rollback()
 		utils.ResponseFormat(c, code.RulePixDomIsExistError, nil)
 		return
 	}
 
-	fmt.Println("step 4")
 	serviceModel := &models.GatewayServiceInfo{
 		ServiceName: params.ServiceName,
 		ServiceDesc: params.ServiceDesc,
 		LoadType:    public.LoadTypeHTTP,
 	}
-	if err = serviceModel.Save(db); err != nil {
+	if err = serviceModel.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
-	// service.ID
 
-	fmt.Println("step 5")
 	httpRule := &models.GatewayServiceHttpRule{
 		ServiceID:      serviceModel.ID,
 		RuleType:       params.RuleType,
@@ -271,14 +265,13 @@ func (sc *ServiceController) ServiceAddHTTP(c *gin.Context) {
 		UrlRewrite:     params.UrlRewrite,
 		HeaderTransfor: params.HeaderTransfor,
 	}
-	if err = httpRule.Save(db); err != nil {
+	if err = httpRule.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
-	fmt.Println("step 6")
 	accessControl := &models.GatewayServiceAccessControl{
 		ServiceID:         serviceModel.ID,
 		OpenAuth:          params.OpenAuth,
@@ -287,14 +280,13 @@ func (sc *ServiceController) ServiceAddHTTP(c *gin.Context) {
 		ClientIpFlowLimit: params.ClientipFlowLimit,
 		ServiceFlowLimit:  params.ServiceFlowLimit,
 	}
-	if err = accessControl.Save(db); err != nil {
+	if err = accessControl.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
-	fmt.Println("step 7")
 	loadBalance := &models.GatewayServiceLoadBalance{
 		ServiceID:              serviceModel.ID,
 		RoundType:              params.RoundType,
@@ -305,18 +297,16 @@ func (sc *ServiceController) ServiceAddHTTP(c *gin.Context) {
 		UpstreamIdleTimeout:    params.UpstreamIdleTimeout,
 		UpstreamMaxIdle:        params.UpstreamMaxIdle,
 	}
-	if err = loadBalance.Save(db); err != nil {
+	if err = loadBalance.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
 	// 提交
-	fmt.Println("step 8")
-	db.Commit()
+	tx.Commit()
 
-	fmt.Println("step 9")
 	utils.ResponseFormat(c, code.Success, gin.H{
 		"service_id": serviceModel.ID,
 	})
@@ -338,36 +328,35 @@ func (sc *ServiceController) ServiceUpdateHTTP(c *gin.Context) {
 
 	db := models.GetDB()
 	// 开启事务
-	db.Begin()
+	tx := db.Begin()
 
 	// 查询HTTP服务是否存在
 	serviceInfo := &models.GatewayServiceInfo{ServiceName: params.ServiceName}
-	serviceInfo, err = serviceInfo.Find(db, serviceInfo)
-	if serviceInfo == nil && err == nil {
-		fmt.Println(err)
+	serviceInfo, err = serviceInfo.Find(tx, serviceInfo)
+	if err != nil {
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceInsideError, nil)
+		return
+	}
+	if serviceInfo == nil {
+		tx.Rollback()
 		utils.ResponseFormat(c, code.ServiceIsNotExistError, nil)
 		return
 	}
-	if serviceInfo == nil && err != nil {
-		utils.ResponseFormat(c, code.ServiceInsideError, "淦")
-		db.Rollback()
-		return
-	}
 
-	serviceDetail, err := serviceInfo.ServiceDetail(db, serviceInfo)
+	serviceDetail, err := serviceInfo.ServiceDetail(tx, serviceInfo)
 	if err != nil {
 		fmt.Println(err)
+		tx.Rollback()
 		utils.ResponseFormat(c, code.ServiceIsNotExistError, nil)
 		return
 	}
-
-	fmt.Printf("%v", serviceDetail.Info)
 
 	info := serviceDetail.Info
 	info.ServiceDesc = params.ServiceDesc
-	if err = db.Save(info).Error; err != nil {
+	if err = tx.Save(info).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -378,9 +367,9 @@ func (sc *ServiceController) ServiceUpdateHTTP(c *gin.Context) {
 	httpRule.NeedWebsocket = params.NeedWebsocket
 	httpRule.UrlRewrite = params.UrlRewrite
 	httpRule.HeaderTransfor = params.HeaderTransfor
-	if err = db.Save(httpRule).Error; err != nil {
+	if err = tx.Save(httpRule).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -391,9 +380,9 @@ func (sc *ServiceController) ServiceUpdateHTTP(c *gin.Context) {
 	accessControl.WhiteList = params.WhiteList
 	accessControl.ClientIpFlowLimit = params.ClientipFlowLimit
 	accessControl.ServiceFlowLimit = params.ServiceFlowLimit
-	if err = db.Save(accessControl).Error; err != nil {
+	if err = tx.Save(accessControl).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -406,15 +395,15 @@ func (sc *ServiceController) ServiceUpdateHTTP(c *gin.Context) {
 	loadBalance.UpstreamHeaderTimeout = params.UpstreamHeaderTimeout
 	loadBalance.UpstreamIdleTimeout = params.UpstreamIdleTimeout
 	loadBalance.UpstreamMaxIdle = params.UpstreamMaxIdle
-	if err = db.Save(loadBalance).Error; err != nil {
+	if err = tx.Save(loadBalance).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
 	// 提交
-	db.Commit()
+	tx.Commit()
 
 	utils.ResponseFormat(c, code.Success, gin.H{
 		"msg": "更新成功",
@@ -429,75 +418,77 @@ func (sc *ServiceController) ServiceAddGRPC(c *gin.Context) {
 		return
 	}
 
-	db := models.GetDB()
-
-	fmt.Println("step 1")
-	// 验证服务是否存在
-	infoSearch := &models.GatewayServiceInfo{
-		ServiceName: params.ServiceName,
-		IsDelete:    0,
-	}
-	if _, err = infoSearch.Find(db, infoSearch); err == nil {
-		utils.ResponseFormat(c, code.ServiceIsExistError, nil)
-		return
-	}
-
-	fmt.Println("step 2")
-	// 验证端口是否被占用
-	tcpRuleSearch := &models.GatewayServiceTcpRule{
-		Port: params.Port,
-	}
-	if _, err = tcpRuleSearch.Find(db, tcpRuleSearch); err == nil {
-		utils.ResponseFormat(c, code.PortOccupiedError, nil)
-		return
-	}
-	grpcRuleSearch := &models.GatewayServiceGrpcRule{
-		Port: params.Port,
-	}
-	if _, err = grpcRuleSearch.Find(db, grpcRuleSearch); err == nil {
-		utils.ResponseFormat(c, code.PortOccupiedError, nil)
-		return
-	}
-
-	fmt.Println("step 3")
 	// 判断ip列表和权重列表数量是否相对应
 	if len(strings.Split(params.IpList, "\n")) != len(strings.Split(params.WeightList, "\n")) {
 		utils.ResponseFormat(c, code.WeightAndIpNumNotEqualError, nil)
 		return
 	}
 
+	db := models.GetDB()
 	// 开启事务
-	db.Begin()
+	tx := db.Begin()
 
-	fmt.Println("step 4")
+	// 验证服务是否存在
+	serviceInfo := &models.GatewayServiceInfo{
+		ServiceName: params.ServiceName,
+		IsDelete:    0,
+	}
+	serviceInfo, err = serviceInfo.Find(tx, serviceInfo)
+	if err != nil {
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceInsideError, nil)
+		return
+	}
+	if serviceInfo != nil {
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceIsExistError, nil)
+		return
+	}
+
+	// 验证端口是否被占用
+	tcpRuleSearch := &models.GatewayServiceTcpRule{
+		Port: params.Port,
+	}
+	if _, err = tcpRuleSearch.Find(tx, tcpRuleSearch); err == nil {
+		utils.ResponseFormat(c, code.PortOccupiedError, nil)
+		tx.Rollback()
+		return
+	}
+	grpcRuleSearch := &models.GatewayServiceGrpcRule{
+		Port: params.Port,
+	}
+	if _, err = grpcRuleSearch.Find(tx, grpcRuleSearch); err == nil {
+		utils.ResponseFormat(c, code.PortOccupiedError, nil)
+		tx.Rollback()
+		return
+	}
+
 	// info表存储
 	info := &models.GatewayServiceInfo{
 		LoadType:    public.LoadTypeGRPC,
 		ServiceName: params.ServiceName,
 		ServiceDesc: params.ServiceDesc,
 	}
-	if err = info.Save(db); err != nil {
+	if err = info.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
-	fmt.Println("step 5")
 	// grpcRule表存储
 	grpcRule := &models.GatewayServiceGrpcRule{
 		ServiceID:      info.ID,
 		Port:           params.Port,
 		HeaderTransfor: params.HeaderTransfor,
 	}
-	if err = grpcRule.Save(db); err != nil {
+	if err = grpcRule.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
-	fmt.Println("step 6")
 	// 权限控制表存储
 	accessControl := &models.GatewayServiceAccessControl{
 		ServiceID:         info.ID,
@@ -508,14 +499,13 @@ func (sc *ServiceController) ServiceAddGRPC(c *gin.Context) {
 		ClientIpFlowLimit: params.ClientipFlowLimit,
 		ServiceFlowLimit:  params.ServiceFlowLimit,
 	}
-	if err = accessControl.Save(db); err != nil {
+	if err = accessControl.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
-	fmt.Println("step 7")
 	// loadBalance表存储
 	loadBalance := &models.GatewayServiceLoadBalance{
 		ServiceID:  info.ID,
@@ -524,17 +514,16 @@ func (sc *ServiceController) ServiceAddGRPC(c *gin.Context) {
 		WeightList: params.WeightList,
 		ForbidList: params.ForbidList,
 	}
-	if err = loadBalance.Save(db); err != nil {
+	if err = loadBalance.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
-	fmt.Println("step 8")
 	// 提交
-	db.Commit()
-	fmt.Println("step 9")
+	tx.Commit()
+
 	utils.ResponseFormat(c, code.Success, gin.H{
 		"service_id": info.ID,
 	})
@@ -556,31 +545,35 @@ func (sc *ServiceController) ServiceUpdateGRPC(c *gin.Context) {
 
 	db := models.GetDB()
 	// 开启事务
-	db.Begin()
+	tx := db.Begin()
 
 	// 查询HTTP服务是否存在
 	serviceInfo := &models.GatewayServiceInfo{ServiceName: params.ServiceName}
-	serviceInfo, err = serviceInfo.Find(db, serviceInfo)
+	serviceInfo, err = serviceInfo.Find(tx, serviceInfo)
 	if err != nil {
-		fmt.Println(err)
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceInsideError, nil)
+		return
+	}
+	if serviceInfo == nil {
+		tx.Rollback()
 		utils.ResponseFormat(c, code.ServiceIsNotExistError, nil)
 		return
 	}
 
-	serviceDetail, err := serviceInfo.ServiceDetail(db, serviceInfo)
+	serviceDetail, err := serviceInfo.ServiceDetail(tx, serviceInfo)
 	if err != nil {
 		fmt.Println(err)
 		utils.ResponseFormat(c, code.ServiceIsNotExistError, nil)
+		tx.Rollback()
 		return
 	}
-
-	fmt.Printf("%v", serviceDetail.Info)
 
 	info := serviceDetail.Info
 	info.ServiceDesc = params.ServiceDesc
-	if err = db.Save(info).Error; err != nil {
+	if err = tx.Save(info).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -591,9 +584,9 @@ func (sc *ServiceController) ServiceUpdateGRPC(c *gin.Context) {
 	httpRule.NeedWebsocket = params.NeedWebsocket
 	httpRule.UrlRewrite = params.UrlRewrite
 	httpRule.HeaderTransfor = params.HeaderTransfor
-	if err = db.Save(httpRule).Error; err != nil {
+	if err = tx.Save(httpRule).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -604,9 +597,9 @@ func (sc *ServiceController) ServiceUpdateGRPC(c *gin.Context) {
 	accessControl.WhiteList = params.WhiteList
 	accessControl.ClientIpFlowLimit = params.ClientipFlowLimit
 	accessControl.ServiceFlowLimit = params.ServiceFlowLimit
-	if err = db.Save(accessControl).Error; err != nil {
+	if err = tx.Save(accessControl).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -619,15 +612,15 @@ func (sc *ServiceController) ServiceUpdateGRPC(c *gin.Context) {
 	loadBalance.UpstreamHeaderTimeout = params.UpstreamHeaderTimeout
 	loadBalance.UpstreamIdleTimeout = params.UpstreamIdleTimeout
 	loadBalance.UpstreamMaxIdle = params.UpstreamMaxIdle
-	if err = db.Save(loadBalance).Error; err != nil {
+	if err = tx.Save(loadBalance).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
 	// 提交
-	db.Commit()
+	tx.Commit()
 
 	utils.ResponseFormat(c, code.Success, gin.H{
 		"msg": "更新成功",
@@ -642,14 +635,29 @@ func (sc *ServiceController) ServiceAddTCP(c *gin.Context) {
 		return
 	}
 
-	db := models.GetDB()
+	// 判断ip列表和权重列表数量是否相对应
+	if len(strings.Split(params.IpList, "\n")) != len(strings.Split(params.WeightList, "\n")) {
+		utils.ResponseFormat(c, code.WeightAndIpNumNotEqualError, nil)
+		return
+	}
+
+	tx := models.GetDB()
+	// 开启事务
+	tx.Begin()
 
 	// 验证服务是否存在
-	infoSearch := &models.GatewayServiceInfo{
+	serviceInfo := &models.GatewayServiceInfo{
 		ServiceName: params.ServiceName,
 		IsDelete:    0,
 	}
-	if _, err = infoSearch.Find(db, infoSearch); err == nil {
+	serviceInfo, err = serviceInfo.Find(tx, serviceInfo)
+	if err != nil {
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceInsideError, nil)
+		return
+	}
+	if serviceInfo != nil {
+		tx.Rollback()
 		utils.ResponseFormat(c, code.ServiceIsExistError, nil)
 		return
 	}
@@ -658,26 +666,19 @@ func (sc *ServiceController) ServiceAddTCP(c *gin.Context) {
 	tcpRuleSearch := &models.GatewayServiceTcpRule{
 		Port: params.Port,
 	}
-	if _, err = tcpRuleSearch.Find(db, tcpRuleSearch); err == nil {
+	if _, err = tcpRuleSearch.Find(tx, tcpRuleSearch); err == nil {
 		utils.ResponseFormat(c, code.PortOccupiedError, nil)
+		tx.Rollback()
 		return
 	}
 	grpcRuleSearch := &models.GatewayServiceGrpcRule{
 		Port: params.Port,
 	}
-	if _, err = grpcRuleSearch.Find(db, grpcRuleSearch); err == nil {
+	if _, err = grpcRuleSearch.Find(tx, grpcRuleSearch); err == nil {
 		utils.ResponseFormat(c, code.PortOccupiedError, nil)
+		tx.Rollback()
 		return
 	}
-
-	// 判断ip列表和权重列表数量是否相对应
-	if len(strings.Split(params.IpList, "\n")) != len(strings.Split(params.WeightList, "\n")) {
-		utils.ResponseFormat(c, code.WeightAndIpNumNotEqualError, nil)
-		return
-	}
-
-	// 开启事务
-	db.Begin()
 
 	// info表存储
 	info := &models.GatewayServiceInfo{
@@ -685,9 +686,9 @@ func (sc *ServiceController) ServiceAddTCP(c *gin.Context) {
 		ServiceName: params.ServiceName,
 		ServiceDesc: params.ServiceDesc,
 	}
-	if err = info.Save(db); err != nil {
+	if err = info.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -698,9 +699,9 @@ func (sc *ServiceController) ServiceAddTCP(c *gin.Context) {
 		Port:           params.Port,
 		HeaderTransfor: params.HeaderTransfor,
 	}
-	if err = grpcRule.Save(db); err != nil {
+	if err = grpcRule.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -715,9 +716,9 @@ func (sc *ServiceController) ServiceAddTCP(c *gin.Context) {
 		ClientIpFlowLimit: params.ClientIPFlowLimit,
 		ServiceFlowLimit:  params.ServiceFlowLimit,
 	}
-	if err = accessControl.Save(db); err != nil {
+	if err = accessControl.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -730,15 +731,15 @@ func (sc *ServiceController) ServiceAddTCP(c *gin.Context) {
 		WeightList: params.WeightList,
 		ForbidList: params.ForbidList,
 	}
-	if err = loadBalance.Save(db); err != nil {
+	if err = loadBalance.Save(tx); err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
 	// 提交
-	db.Commit()
+	tx.Commit()
 	utils.ResponseFormat(c, code.Success, gin.H{
 		"service_id": info.ID,
 	})
@@ -760,31 +761,34 @@ func (sc *ServiceController) ServiceUpdateTCP(c *gin.Context) {
 
 	db := models.GetDB()
 	// 开启事务
-	db.Begin()
+	tx := db.Begin()
 
 	// 查询HTTP服务是否存在
 	serviceInfo := &models.GatewayServiceInfo{ServiceName: params.ServiceName}
-	serviceInfo, err = serviceInfo.Find(db, serviceInfo)
+	serviceInfo, err = serviceInfo.Find(tx, serviceInfo)
+	if err != nil {
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceInsideError, nil)
+		return
+	}
+	if serviceInfo == nil {
+		tx.Rollback()
+		utils.ResponseFormat(c, code.ServiceIsNotExistError, nil)
+		return
+	}
+
+	serviceDetail, err := serviceInfo.ServiceDetail(tx, serviceInfo)
 	if err != nil {
 		fmt.Println(err)
 		utils.ResponseFormat(c, code.ServiceIsNotExistError, nil)
 		return
 	}
-
-	serviceDetail, err := serviceInfo.ServiceDetail(db, serviceInfo)
-	if err != nil {
-		fmt.Println(err)
-		utils.ResponseFormat(c, code.ServiceIsNotExistError, nil)
-		return
-	}
-
-	fmt.Printf("%v", serviceDetail.Info)
 
 	info := serviceDetail.Info
 	info.ServiceDesc = params.ServiceDesc
-	if err = db.Save(info).Error; err != nil {
+	if err = tx.Save(info).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -795,9 +799,9 @@ func (sc *ServiceController) ServiceUpdateTCP(c *gin.Context) {
 	httpRule.NeedWebsocket = params.NeedWebsocket
 	httpRule.UrlRewrite = params.UrlRewrite
 	httpRule.HeaderTransfor = params.HeaderTransfor
-	if err = db.Save(httpRule).Error; err != nil {
+	if err = tx.Save(httpRule).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -808,9 +812,9 @@ func (sc *ServiceController) ServiceUpdateTCP(c *gin.Context) {
 	accessControl.WhiteList = params.WhiteList
 	accessControl.ClientIpFlowLimit = params.ClientipFlowLimit
 	accessControl.ServiceFlowLimit = params.ServiceFlowLimit
-	if err = db.Save(accessControl).Error; err != nil {
+	if err = tx.Save(accessControl).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
@@ -823,15 +827,15 @@ func (sc *ServiceController) ServiceUpdateTCP(c *gin.Context) {
 	loadBalance.UpstreamHeaderTimeout = params.UpstreamHeaderTimeout
 	loadBalance.UpstreamIdleTimeout = params.UpstreamIdleTimeout
 	loadBalance.UpstreamMaxIdle = params.UpstreamMaxIdle
-	if err = db.Save(loadBalance).Error; err != nil {
+	if err = tx.Save(loadBalance).Error; err != nil {
 		fmt.Println(err)
-		db.Rollback()
+		tx.Rollback()
 		utils.ResponseFormat(c, code.DBSaveError, nil)
 		return
 	}
 
 	// 提交
-	db.Commit()
+	tx.Commit()
 
 	utils.ResponseFormat(c, code.Success, gin.H{
 		"msg": "更新成功",

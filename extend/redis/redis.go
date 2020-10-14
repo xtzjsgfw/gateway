@@ -21,3 +21,7 @@ func Init() {
 	}
 	fmt.Println("连接成功", pone)
 }
+
+func GetRedis() *redis.Client {
+	return Rdb
+}
