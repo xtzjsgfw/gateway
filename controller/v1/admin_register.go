@@ -31,7 +31,7 @@ func (rc *RegisterController) AdminRegister(c *gin.Context) {
 
 	// 查询是否有对应用户
 	registerService := &service.AdminService{
-		Mobile: adminRegisterInput.Mobile,
+		Mobile:   adminRegisterInput.Mobile,
 		Password: adminRegisterInput.Password,
 		Username: adminRegisterInput.Mobile,
 	}
@@ -56,5 +56,4 @@ func (rc *RegisterController) AdminRegister(c *gin.Context) {
 			"ID": userID,
 		})
 	}
-
 }

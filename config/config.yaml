@@ -1,3 +1,10 @@
+# 服务基本配置
+server:
+  runMode: debug
+  port: 8000
+  jwtSecret: MARKET.MONITOR.SECRET
+  jwtExpire: 24   # 单位: 小时
+
 log:
   logPath: logs/
 

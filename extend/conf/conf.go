@@ -7,6 +7,15 @@ import (
 	"io/ioutil"
 )
 
+type server struct {
+	RunMode   string `mapstructure:"runMode"`
+	Port      string `mapstructure:"port"`
+	JwtSecret string `mapstructure:"jwtSecret"`
+	JwtExpire int    `mapstructure:"jwtExpire"`
+}
+
+var ServerConf = &server{}
+
 type database struct {
 	DBType       string `mapstructure:"dbType"`
 	DBName       string `mapstructure:"dbName"`
@@ -28,16 +37,16 @@ type log struct {
 var LogConf = &log{}
 
 type redis struct {
-	Host string	`mapstructure:"host"`
-	Port string	`mapstructure:"port"`
+	Host string `mapstructure:"host"`
+	Port string `mapstructure:"port"`
 }
 
 var RedisConf = &redis{}
 
 type cluster struct {
-	IP string	`mapstructure:"ip"`
-	Port string	`mapstructure:"port"`
-	SSLPort string	`mapstructure:"sslPort"`
+	IP      string `mapstructure:"ip"`
+	Port    string `mapstructure:"port"`
+	SSLPort string `mapstructure:"sslPort"`
 }
 
 var ClusterConf = &cluster{}
@@ -52,6 +61,7 @@ func Init() {
 	if err != nil {
 		fmt.Println("Viper库读取配置文件失败")
 	}
+	viper.UnmarshalKey("server", ServerConf)
 	viper.UnmarshalKey("database", DBConf)
 	viper.UnmarshalKey("log", LogConf)
 	viper.UnmarshalKey("redis", RedisConf)
