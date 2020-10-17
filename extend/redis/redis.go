@@ -7,7 +7,6 @@ import (
 )
 
 var Rdb *redis.Client
-var err error
 
 func Init() {
 	addr := fmt.Sprintf("%s:%s", conf.RedisConf.Host, conf.RedisConf.Port)

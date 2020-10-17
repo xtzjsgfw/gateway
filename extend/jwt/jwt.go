@@ -15,8 +15,8 @@ func NewJWT() *JWT {
 }
 
 type CustomClaims struct {
-	ID       uint   `json:"id"`
-	Username string `json:"username"`
+	ID     uint   `json:"id"`
+	Mobile string `json:"mobile"`
 	jwt.StandardClaims
 }
 
