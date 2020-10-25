@@ -30,3 +30,15 @@ cluster:
   ip: 127.0.0.1
   port: 8880
   sslPort: 4880
+
+http:
+  addr: 9999
+  readTimeout: 10
+  WriteTimeout: 10
+  maxHeaderBytes: 20
+
+https:
+  addr: :4433
+  readTimeout: 10
+  WriteTimeout: 10
+  maxHeaderBytes: 20

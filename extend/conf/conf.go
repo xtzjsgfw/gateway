@@ -51,6 +51,24 @@ type cluster struct {
 
 var ClusterConf = &cluster{}
 
+type http struct {
+	Addr           string `mapstructure:"addr"`
+	ReadTimeout    int    `mapstructure:"readTimeout"`
+	WriteTimeout   int    `mapstructure:"writeTimeout"`
+	MaxHeaderBytes int    `mapstructure:"maxHeaderBytes"`
+}
+
+var HttpConf = &http{}
+
+type https struct {
+	Addr           string `mapstructure:"addr"`
+	ReadTimeout    int    `mapstructure:"readTimeout"`
+	WriteTimeout   int    `mapstructure:"writeTimeout"`
+	MaxHeaderBytes int    `mapstructure:"maxHeaderBytes"`
+}
+
+var HttpsConf = &https{}
+
 func Init() {
 	viper.SetConfigType("yaml")
 	confFile, err := ioutil.ReadFile("config/config.yaml")
@@ -66,4 +84,6 @@ func Init() {
 	viper.UnmarshalKey("log", LogConf)
 	viper.UnmarshalKey("redis", RedisConf)
 	viper.UnmarshalKey("cluster", ClusterConf)
+	viper.UnmarshalKey("http", HttpConf)
+	viper.UnmarshalKey("https", HttpsConf)
 }
