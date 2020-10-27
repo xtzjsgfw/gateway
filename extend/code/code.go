@@ -34,6 +34,8 @@ var (
 
 	PortOccupiedError = &Code{http.StatusBadRequest, 7006, "端口被占用"}
 
+	GetServiceFailed = &Code{http.StatusBadRequest, 7007, "获取service失败"}
+
 	// 8xxx app相关
 	APPIsNotExistError = &Code{http.StatusBadRequest, 8001, "该租户不存在"}
 	APPIsExistError    = &Code{http.StatusBadRequest, 8001, "已存在该租户"}
@@ -42,4 +44,6 @@ var (
 	ServiceInsideError = &Code{http.StatusInternalServerError, 5000, "服务器内部错误"}
 
 	PongCode = &Code{http.StatusOK, 2001, "Pong"}
+
+	ReverseProxyError = &Code{http.StatusBadRequest, 9000, "反向代理请求失败"}
 )

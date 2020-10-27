@@ -20,8 +20,7 @@ func HttpServerRun() {
 	r := HttpInit(gin.Recovery(), gin.Logger())
 
 	HttpSrvHandler = &http.Server{
-		Addr: ":9999",
-		//Addr:           ":" + conf.HttpConf.Addr,
+		Addr:           conf.HttpConf.Addr,
 		Handler:        r,
 		ReadTimeout:    time.Duration(conf.HttpConf.ReadTimeout) * time.Second,
 		WriteTimeout:   time.Duration(conf.HttpConf.WriteTimeout) * time.Second,
@@ -29,7 +28,7 @@ func HttpServerRun() {
 	}
 	log.Printf(" [INFO] http_proxy_run %v\n", conf.HttpConf.Addr)
 	if err := HttpSrvHandler.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		fmt.Println("服务出错")
+		fmt.Println("HTTP服务出错")
 	}
 }
 
@@ -37,8 +36,7 @@ func HttpsServerRun() {
 	r := HttpsInit(gin.Recovery(), gin.Logger())
 
 	HttpsSrvHandler = &http.Server{
-		//Addr:           conf.HttpsConf.Addr,
-		Addr:           ":4433",
+		Addr:           conf.HttpsConf.Addr,
 		Handler:        r,
 		ReadTimeout:    time.Duration(conf.HttpsConf.ReadTimeout) * time.Second,
 		WriteTimeout:   time.Duration(conf.HttpsConf.WriteTimeout) * time.Second,
@@ -46,7 +44,7 @@ func HttpsServerRun() {
 	}
 	log.Printf(" [INFO] http_proxy_run %s\n", conf.HttpsConf.Addr)
 	if err := HttpSrvHandler.ListenAndServeTLS(cert_file.Path("server.crt"), cert_file.Path("server.key")); err != nil && err != http.ErrServerClosed {
-		fmt.Println("服务出错HTTPS")
+		fmt.Println("HTTPS服务出错")
 	}
 }
 

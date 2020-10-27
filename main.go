@@ -51,15 +51,15 @@ func main() {
 		go func() {
 			http_proxy.HttpServerRun()
 		}()
-		go func() {
-			http_proxy.HttpsServerRun()
-		}()
+		//go func() {
+		//	http_proxy.HttpsServerRun()
+		//}()
 
 		quit := make(chan os.Signal)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 		<-quit
 
 		http_proxy.HttpServerStop()
-		http_proxy.HttpsServerStop()
+		//http_proxy.HttpsServerStop()
 	}
 }

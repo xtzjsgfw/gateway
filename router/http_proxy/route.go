@@ -11,10 +11,15 @@ func HttpInit(middlewares ...gin.HandlerFunc) *gin.Engine {
 	route := gin.New()
 
 	route.Use(middlewares...)
-	route.Use(http_proxy.HTTPAccessModeMiddleware())
+
 	route.GET("/ping", func(c *gin.Context) {
 		utils.ResponseFormat(c, code.PongCode, nil)
 	})
+
+	route.Use(
+		http_proxy.HTTPAccessModeMiddleware(),
+		http_proxy.HTTPReverseProxyMiddleware(),
+	)
 
 	return route
 }

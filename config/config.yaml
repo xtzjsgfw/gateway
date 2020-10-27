@@ -32,7 +32,7 @@ cluster:
   sslPort: 4880
 
 http:
-  addr: 9999
+  addr: :9999
   readTimeout: 10
   WriteTimeout: 10
   maxHeaderBytes: 20

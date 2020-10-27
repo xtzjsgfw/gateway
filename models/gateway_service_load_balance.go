@@ -8,7 +8,7 @@ import (
 // 网关负载表
 type GatewayServiceLoadBalance struct {
 	gorm.Model
-	ServiceID              uint    `gorm:"type: bigint(20); not null; default: 0; comment: '服务id'"`
+	ServiceID              uint   `gorm:"type: bigint(20); not null; default: 0; comment: '服务id'"`
 	CheckMethod            int    `gorm:"type: tinyint(20); not null; default: 0; comment: '检查方法 0=tcpchk,检测端口是否握手成功'"`
 	CheckTimeout           int    `gorm:"type: int(10); not null; default: 0; comment: 'check超时时间,单位s'"`
 	CheckInterval          int    `gorm:"type: int(11); not null; default: 0; comment: '检查间隔, 单位s'"`
@@ -22,7 +22,6 @@ type GatewayServiceLoadBalance struct {
 	UpstreamMaxIdle        int    `gorm:"type: int(11); not null; default: 0; comment: '最大空闲链接数'"`
 }
 
-
 func (g *GatewayServiceLoadBalance) TableName() string {
 	return "gateway_service_load_balance"
 }
@@ -35,6 +34,10 @@ func (g *GatewayServiceLoadBalance) Find(search *GatewayServiceLoadBalance) (*Ga
 
 func (g *GatewayServiceLoadBalance) GetIPListByModel() []string {
 	return strings.Split(g.IpList, ",")
+}
+
+func (g *GatewayServiceLoadBalance) GetWeightListByModel() []string {
+	return strings.Split(g.WeightList, ",")
 }
 
 func (g *GatewayServiceLoadBalance) Save(DB *gorm.DB) error {
